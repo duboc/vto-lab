@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Try-On Results - Virtual Try-On Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Virtual Try-On Results</h1>
+            <p>Here are all your virtual try-on results</p>
+        </header>
+
+        <!-- Results Summary -->
+        <section class="results-summary">
+            <div class="summary-stats">
+                <div class="stat-item">
+                    <span class="stat-number">{{ results.completed_items }}</span>
+                    <span class="stat-label">Successful</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ results.failed_items }}</span>
+                    <span class="stat-label">Failed</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">{{ "%.1f"|format(results.duration) }}s</span>
+                    <span class="stat-label">Processing Time</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Original Image -->
+        <section class="original-section">
+            <h3>Your Original Photo</h3>
+            <div class="original-image-container">
+                <img src="{{ url_for('serve_upload', filename=user_image) }}" 
+                     alt="Your original photo" class="original-image">
+            </div>
+        </section>
+
+        <!-- Results Grid -->
+        <section class="results-grid-section">
+            <h3>Try-On Results</h3>
+            <div class="results-grid">
+                {% for result in results.results %}
+                <div class="result-card">
+                    <div class="result-image-container">
+                        <img src="{{ url_for('serve_result', filename=result.result_filename) }}" 
+                             alt="Try-on result for {{ result.clothing_item.name }}" 
+                             class="result-image">
+                        <div class="result-overlay">
+                            <button class="btn btn-view" onclick="viewFullResult('{{ result.result_filename }}', '{{ result.clothing_item.name }}')">
+                                View Full Size
+                            </button>
+                            <button class="btn btn-download" onclick="downloadResult('{{ result.result_filename }}', '{{ result.clothing_item.name }}')">
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                    <div class="result-info">
+                        <h4>Item {{ result.clothing_item.name }}</h4>
+                        <p class="result-status success">✓ Success</p>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <!-- Failed Results -->
+                {% for error in results.errors %}
+                <div class="result-card error-card">
+                    <div class="result-image-container">
+                        <img src="{{ url_for('serve_clothing', filename=error.clothing_item.filename) }}" 
+                             alt="Original clothing item {{ error.clothing_item.name }}" 
+                             class="result-image grayscale">
+                        <div class="error-overlay">
+                            <span class="error-icon">⚠️</span>
+                            <p class="error-message">{{ error.error }}</p>
+                        </div>
+                    </div>
+                    <div class="result-info">
+                        <h4>Item {{ error.clothing_item.name }}</h4>
+                        <p class="result-status error">✗ Failed</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Actions -->
+        <section class="results-actions">
+            <div class="action-buttons">
+                <button class="btn btn-primary btn-large" onclick="downloadAllResults()">
+                    <span class="btn-icon">💾</span>
+                    Download All Results
+                </button>
+                <button class="btn btn-secondary btn-large" onclick="window.location.href='/'">
+                    <span class="btn-icon">🔄</span>
+                    Try Again
+                </button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Full Size Modal -->
+    <div class="modal" id="fullSizeModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Full Size Result</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-comparison">
+                    <div class="modal-image-container">
+                        <h4>Original</h4>
+                        <img src="{{ url_for('serve_upload', filename=user_image) }}" 
+                             alt="Original photo" class="modal-image">
+                    </div>
+                    <div class="modal-image-container">
+                        <h4>Try-On Result</h4>
+                        <img id="modalResultImage" alt="Try-on result" class="modal-image">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="modalDownloadBtn">Download Result</button>
+                <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Processing...</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/results.js') }}"></script>
+</body>
+</html>
