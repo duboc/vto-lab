@@ -8,9 +8,9 @@
 </head>
 <body>
     <div class="container">
-        <header class="header">
+        <header class="header results-header">
             <h1>Virtual Try-On Results</h1>
-            <p>Here are all your virtual try-on results</p>
+            <p>Swipe through your amazing transformations</p>
         </header>
 
         <!-- Results Summary -->
@@ -31,18 +31,128 @@
             </div>
         </section>
 
-        <!-- Original Image -->
-        <section class="original-section">
-            <h3>Your Original Photo</h3>
-            <div class="original-image-container">
-                <img src="{{ url_for('serve_upload', filename=user_image) }}" 
-                     alt="Your original photo" class="original-image">
+        <!-- Results Carousel -->
+        <section class="results-carousel-section">
+            <div class="results-carousel-container">
+                <!-- Carousel Navigation -->
+                <button class="carousel-nav carousel-nav-prev" id="carouselPrev" aria-label="Previous result">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                </button>
+                <button class="carousel-nav carousel-nav-next" id="carouselNext" aria-label="Next result">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                </button>
+
+                <!-- Carousel Track -->
+                <div class="results-carousel-track-container">
+                    <div class="results-carousel-track" id="resultsCarouselTrack">
+                        <!-- Original Photo Slide -->
+                        <div class="carousel-result-slide original-slide">
+                            <div class="slide-content">
+                                <div class="slide-label">Original Photo</div>
+                                <div class="slide-image-container">
+                                    <img src="{{ url_for('serve_upload', filename=user_image) }}" 
+                                         alt="Your original photo" 
+                                         class="slide-image original-image">
+                                </div>
+                                <div class="slide-info">
+                                    <h3>Your Starting Point</h3>
+                                    <p>Swipe to see your virtual try-ons</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Result Slides -->
+                        {% for result in results.results %}
+                        <div class="carousel-result-slide" data-result-index="{{ loop.index0 }}">
+                            <div class="slide-content">
+                                <div class="slide-label">Item {{ result.clothing_item.name }}</div>
+                                <div class="slide-image-container">
+                                    <img src="{{ url_for('serve_result', filename=result.result_filename) }}" 
+                                         alt="Try-on result for {{ result.clothing_item.name }}" 
+                                         class="slide-image result-image"
+                                         data-filename="{{ result.result_filename }}"
+                                         data-item-name="{{ result.clothing_item.name }}">
+                                    <div class="slide-actions">
+                                        <button class="btn-slide-action btn-fullscreen" 
+                                                onclick="viewFullResult('{{ result.result_filename }}', '{{ result.clothing_item.name }}')"
+                                                aria-label="View fullscreen">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                                            </svg>
+                                        </button>
+                                        <button class="btn-slide-action btn-download" 
+                                                onclick="downloadResult('{{ result.result_filename }}', '{{ result.clothing_item.name }}')"
+                                                aria-label="Download">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="slide-info">
+                                    <h3>Item {{ result.clothing_item.name }}</h3>
+                                    <p class="slide-status success">✓ Successfully generated</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Failed Results -->
+                        {% for error in results.errors %}
+                        <div class="carousel-result-slide error-slide">
+                            <div class="slide-content">
+                                <div class="slide-label error">Failed - Item {{ error.clothing_item.name }}</div>
+                                <div class="slide-image-container error-container">
+                                    <img src="{{ url_for('serve_clothing', filename=error.clothing_item.filename) }}" 
+                                         alt="Original clothing item {{ error.clothing_item.name }}" 
+                                         class="slide-image grayscale">
+                                    <div class="error-overlay">
+                                        <span class="error-icon">⚠️</span>
+                                        <p class="error-message">{{ error.error }}</p>
+                                    </div>
+                                </div>
+                                <div class="slide-info">
+                                    <h3>Item {{ error.clothing_item.name }}</h3>
+                                    <p class="slide-status error">✗ Generation failed</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Carousel Indicators -->
+                <div class="carousel-indicators" id="carouselIndicators">
+                    <!-- Indicators will be generated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Mini Grid View Toggle -->
+            <div class="view-toggle">
+                <button class="btn-view-toggle active" data-view="carousel" onclick="setViewMode('carousel')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="6" y="4" width="12" height="16" rx="2"/>
+                    </svg>
+                    Carousel
+                </button>
+                <button class="btn-view-toggle" data-view="grid" onclick="setViewMode('grid')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                    </svg>
+                    Grid
+                </button>
             </div>
         </section>
 
-        <!-- Results Grid -->
-        <section class="results-grid-section">
-            <h3>Try-On Results</h3>
+        <!-- Grid View (Hidden by default) -->
+        <section class="results-grid-section" style="display: none;">
             <div class="results-grid">
                 {% for result in results.results %}
                 <div class="result-card">

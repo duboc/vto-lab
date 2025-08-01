@@ -1,0 +1,61 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.pytest_cache
+nosetests.xml
+.cache
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# Local environment
+.env
+.venv
+env/
+venv/
+
+# Uploads and results (these will be created at runtime)
+uploads/*
+results/*
+
+# Memory bank (documentation)
+memory-bank/
+
+# Node modules (if any)
+node_modules
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp

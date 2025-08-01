@@ -27,7 +27,8 @@ The backend relies on the following key Python packages, as defined in `requirem
     1.  Running `gcloud auth application-default login` in the development environment.
     2.  Setting the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to point to a service account key file, which is common for production deployments.
 -   **Development Server**: The application can be run in development mode (`FLASK_ENV=development`), which enables features like automatic reloading on code changes.
--   **Configuration**: Application configuration is managed via a `.env` file in the project root. This file is loaded at startup using the `python-dotenv` library. Key variables like `PROJECT_ID` are stored there to keep them separate from the source code.
+-   **Deployment Script**: A `deploy.sh` script is provided to automate deployments to Google Cloud Run. It reads the `PROJECT_ID` from the local `.env` file and injects it as an environment variable into the Cloud Run service using the `--set-env-vars` flag. This is the recommended way to handle environment-specific configuration for deployments.
+-   **Configuration**: Application configuration is managed via a `.env` file in the project root for local development. This file is loaded at startup using the `python-dotenv` library. Key variables like `PROJECT_ID` are stored there to keep them separate from the source code.
 
 ## 4. Technical Constraints & Considerations
 

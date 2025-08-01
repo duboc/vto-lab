@@ -463,8 +463,8 @@ function setupCarouselEventListeners() {
     
     // Touch events for mobile swiping
     if (carouselTrack) {
-        carouselTrack.addEventListener('touchstart', handleTouchStart, { passive: true });
-        carouselTrack.addEventListener('touchmove', handleTouchMove, { passive: true });
+        carouselTrack.addEventListener('touchstart', handleTouchStart, { passive: false });
+        carouselTrack.addEventListener('touchmove', handleTouchMove, { passive: false });
         carouselTrack.addEventListener('touchend', handleTouchEnd);
         
         // Mouse events for desktop dragging
@@ -1237,8 +1237,15 @@ function updateIndicators() {
 }
 
 // Touch and mouse event handlers
+let touchStartTime = 0;
+let touchStartY = 0;
+let hasMoved = false;
+
 function handleTouchStart(e) {
     touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+    hasMoved = false;
     isCarouselDragging = true;
     carouselTrack.style.transition = 'none';
 }
@@ -1247,23 +1254,32 @@ function handleTouchMove(e) {
     if (!isCarouselDragging) return;
     
     touchEndX = e.touches[0].clientX;
-    const diff = touchStartX - touchEndX;
+    const touchEndY = e.touches[0].clientY;
     
-    // Add resistance at boundaries
-    const maxIndex = Math.max(0, totalSlides - slidesPerView);
-    const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 280;
-    const gap = 16;
+    const diffX = touchStartX - touchEndX;
+    const diffY = touchStartY - touchEndY;
     
-    let resistance = 1;
-    if ((currentSlideIndex === 0 && diff < 0) || 
-        (currentSlideIndex >= maxIndex && diff > 0)) {
-        resistance = 0.3; // Reduce movement at boundaries
+    // Check if this is a horizontal swipe (not vertical scroll)
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
+        e.preventDefault(); // Prevent scrolling only for horizontal swipes
+        hasMoved = true;
+        
+        // Add resistance at boundaries
+        const maxIndex = Math.max(0, totalSlides - slidesPerView);
+        const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 280;
+        const gap = 16;
+        
+        let resistance = 1;
+        if ((currentSlideIndex === 0 && diffX < 0) || 
+            (currentSlideIndex >= maxIndex && diffX > 0)) {
+            resistance = 0.3; // Reduce movement at boundaries
+        }
+        
+        const baseTranslateX = -currentSlideIndex * (slideWidth + gap);
+        const translateX = baseTranslateX - (diffX * resistance);
+        
+        carouselTrack.style.transform = `translateX(${translateX}px)`;
     }
-    
-    const baseTranslateX = -currentSlideIndex * (slideWidth + gap);
-    const translateX = baseTranslateX - (diff * resistance);
-    
-    carouselTrack.style.transform = `translateX(${translateX}px)`;
 }
 
 function handleTouchEnd(e) {
@@ -1272,11 +1288,18 @@ function handleTouchEnd(e) {
     isCarouselDragging = false;
     carouselTrack.style.transition = '';
     
-    const diff = touchStartX - touchEndX;
+    const touchDuration = Date.now() - touchStartTime;
+    const diffX = touchStartX - touchEndX;
     const threshold = 50; // Minimum swipe distance
+    const tapThreshold = 200; // Maximum time for a tap (ms)
     
-    if (Math.abs(diff) > threshold) {
-        if (diff > 0) {
+    // If it's a quick tap and hasn't moved much, treat it as a click
+    if (touchDuration < tapThreshold && Math.abs(diffX) < 10 && !hasMoved) {
+        // Let the click event handle it
+        updateCarousel();
+    } else if (Math.abs(diffX) > threshold) {
+        // It's a swipe
+        if (diffX > 0) {
             goToNextSlide();
         } else {
             goToPrevSlide();
@@ -1288,6 +1311,8 @@ function handleTouchEnd(e) {
     
     touchStartX = 0;
     touchEndX = 0;
+    touchStartY = 0;
+    hasMoved = false;
 }
 
 // Mouse event handlers (for desktop dragging)

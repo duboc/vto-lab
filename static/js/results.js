@@ -2,12 +2,23 @@
 let currentResultFilename = null;
 let currentItemName = null;
 let isZoomed = false;
+let currentSlideIndex = 0;
+let isCarouselTransitioning = false;
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+let isDragging = false;
+let startDragX = 0;
+let currentTranslateX = 0;
+let dragOffset = 0;
 
 // Initialize the results page
 document.addEventListener('DOMContentLoaded', function() {
     initializeResultsPage();
     createToastContainer();
     addPageAnimations();
+    initializeCarousel();
 });
 
 function initializeResultsPage() {
@@ -34,6 +45,279 @@ function initializeResultsPage() {
     
     // Add tooltips
     setupTooltips();
+}
+
+// Initialize carousel functionality
+function initializeCarousel() {
+    const track = document.getElementById('resultsCarouselTrack');
+    const slides = track.querySelectorAll('.carousel-result-slide');
+    const prevBtn = document.getElementById('carouselPrev');
+    const nextBtn = document.getElementById('carouselNext');
+    
+    // Create indicators
+    createCarouselIndicators(slides.length);
+    
+    // Set initial slide
+    updateCarousel();
+    
+    // Navigation buttons
+    prevBtn.addEventListener('click', () => navigateCarousel('prev'));
+    nextBtn.addEventListener('click', () => navigateCarousel('next'));
+    
+    // Touch/swipe support
+    setupTouchSupport(track);
+    
+    // Mouse drag support for desktop
+    setupMouseDragSupport(track);
+    
+    // Keyboard support when carousel is visible
+    document.addEventListener('keydown', (e) => {
+        const carouselSection = document.querySelector('.results-carousel-section');
+        if (carouselSection && carouselSection.style.display !== 'none') {
+            if (e.key === 'ArrowLeft') {
+                navigateCarousel('prev');
+            } else if (e.key === 'ArrowRight') {
+                navigateCarousel('next');
+            }
+        }
+    });
+}
+
+// Create carousel indicators
+function createCarouselIndicators(count) {
+    const indicatorsContainer = document.getElementById('carouselIndicators');
+    indicatorsContainer.innerHTML = '';
+    
+    for (let i = 0; i < count; i++) {
+        const indicator = document.createElement('button');
+        indicator.className = 'carousel-indicator';
+        indicator.setAttribute('aria-label', `Go to slide ${i + 1}`);
+        indicator.addEventListener('click', () => goToSlide(i));
+        
+        if (i === 0) {
+            indicator.classList.add('active');
+        }
+        
+        indicatorsContainer.appendChild(indicator);
+    }
+}
+
+// Navigate carousel
+function navigateCarousel(direction) {
+    if (isCarouselTransitioning) return;
+    
+    const track = document.getElementById('resultsCarouselTrack');
+    const slides = track.querySelectorAll('.carousel-result-slide');
+    const totalSlides = slides.length;
+    
+    if (direction === 'next') {
+        currentSlideIndex = (currentSlideIndex + 1) % totalSlides;
+    } else {
+        currentSlideIndex = (currentSlideIndex - 1 + totalSlides) % totalSlides;
+    }
+    
+    updateCarousel();
+}
+
+// Go to specific slide
+function goToSlide(index) {
+    if (isCarouselTransitioning || index === currentSlideIndex) return;
+    
+    currentSlideIndex = index;
+    updateCarousel();
+}
+
+// Update carousel position
+function updateCarousel() {
+    const track = document.getElementById('resultsCarouselTrack');
+    const slides = track.querySelectorAll('.carousel-result-slide');
+    const indicators = document.querySelectorAll('.carousel-indicator');
+    const prevBtn = document.getElementById('carouselPrev');
+    const nextBtn = document.getElementById('carouselNext');
+    
+    // Start transition
+    isCarouselTransitioning = true;
+    track.classList.add('transitioning');
+    
+    // Calculate translation
+    const slideWidth = slides[0].offsetWidth;
+    const gap = 32; // Gap between slides in pixels
+    const translateX = -(currentSlideIndex * (slideWidth + gap));
+    
+    // Apply transform
+    track.style.transform = `translateX(${translateX}px)`;
+    
+    // Update indicators
+    indicators.forEach((indicator, index) => {
+        indicator.classList.remove('active', 'transitioning');
+        if (index === currentSlideIndex) {
+            indicator.classList.add('active', 'transitioning');
+        }
+    });
+    
+    // Update navigation buttons state
+    prevBtn.disabled = currentSlideIndex === 0;
+    nextBtn.disabled = currentSlideIndex === slides.length - 1;
+    
+    // End transition
+    setTimeout(() => {
+        isCarouselTransitioning = false;
+        track.classList.remove('transitioning');
+    }, 500);
+}
+
+// Touch support for mobile
+function setupTouchSupport(track) {
+    track.addEventListener('touchstart', handleTouchStart, { passive: true });
+    track.addEventListener('touchmove', handleTouchMove, { passive: true });
+    track.addEventListener('touchend', handleTouchEnd, { passive: true });
+}
+
+function handleTouchStart(e) {
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    isDragging = true;
+    
+    const track = document.getElementById('resultsCarouselTrack');
+    track.classList.add('dragging');
+}
+
+function handleTouchMove(e) {
+    if (!isDragging) return;
+    
+    touchEndX = e.touches[0].clientX;
+    touchEndY = e.touches[0].clientY;
+    
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    // Only handle horizontal swipes
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        e.preventDefault();
+        
+        const track = document.getElementById('resultsCarouselTrack');
+        const slides = track.querySelectorAll('.carousel-result-slide');
+        const slideWidth = slides[0].offsetWidth;
+        const gap = 32;
+        const currentTranslate = -(currentSlideIndex * (slideWidth + gap));
+        
+        // Apply real-time drag effect with resistance at edges
+        let dragDistance = diffX * 0.5; // Reduce sensitivity
+        
+        // Add resistance at edges
+        if ((currentSlideIndex === 0 && diffX > 0) || 
+            (currentSlideIndex === slides.length - 1 && diffX < 0)) {
+            dragDistance *= 0.3;
+        }
+        
+        track.style.transform = `translateX(${currentTranslate + dragDistance}px)`;
+    }
+}
+
+function handleTouchEnd(e) {
+    if (!isDragging) return;
+    
+    isDragging = false;
+    const track = document.getElementById('resultsCarouselTrack');
+    track.classList.remove('dragging');
+    
+    const diffX = touchEndX - touchStartX;
+    const diffY = touchEndY - touchStartY;
+    
+    // Determine if it was a swipe
+    const threshold = 50;
+    
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > threshold) {
+        if (diffX > 0) {
+            navigateCarousel('prev');
+        } else {
+            navigateCarousel('next');
+        }
+    } else {
+        // Snap back to current slide
+        updateCarousel();
+    }
+}
+
+// Mouse drag support for desktop
+function setupMouseDragSupport(track) {
+    let isMouseDown = false;
+    
+    track.addEventListener('mousedown', (e) => {
+        isMouseDown = true;
+        startDragX = e.clientX;
+        track.classList.add('dragging');
+        track.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+    
+    track.addEventListener('mousemove', (e) => {
+        if (!isMouseDown) return;
+        
+        const diffX = e.clientX - startDragX;
+        const track = document.getElementById('resultsCarouselTrack');
+        const slides = track.querySelectorAll('.carousel-result-slide');
+        const slideWidth = slides[0].offsetWidth;
+        const gap = 32;
+        const currentTranslate = -(currentSlideIndex * (slideWidth + gap));
+        
+        // Apply drag with resistance
+        let dragDistance = diffX * 0.5;
+        
+        if ((currentSlideIndex === 0 && diffX > 0) || 
+            (currentSlideIndex === slides.length - 1 && diffX < 0)) {
+            dragDistance *= 0.3;
+        }
+        
+        track.style.transform = `translateX(${currentTranslate + dragDistance}px)`;
+    });
+    
+    const handleMouseUp = (e) => {
+        if (!isMouseDown) return;
+        
+        isMouseDown = false;
+        track.classList.remove('dragging');
+        track.style.cursor = '';
+        
+        const diffX = e.clientX - startDragX;
+        const threshold = 50;
+        
+        if (Math.abs(diffX) > threshold) {
+            if (diffX > 0) {
+                navigateCarousel('prev');
+            } else {
+                navigateCarousel('next');
+            }
+        } else {
+            updateCarousel();
+        }
+    };
+    
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseleave', handleMouseUp);
+}
+
+// View mode toggle
+function setViewMode(mode) {
+    const carouselSection = document.querySelector('.results-carousel-section');
+    const gridSection = document.querySelector('.results-grid-section');
+    const toggleButtons = document.querySelectorAll('.btn-view-toggle');
+    
+    toggleButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-view') === mode) {
+            btn.classList.add('active');
+        }
+    });
+    
+    if (mode === 'carousel') {
+        carouselSection.style.display = 'block';
+        gridSection.style.display = 'none';
+        updateCarousel(); // Ensure carousel is properly positioned
+    } else {
+        carouselSection.style.display = 'none';
+        gridSection.style.display = 'block';
+    }
 }
 
 // Page animations
@@ -127,8 +411,7 @@ function animatePageElements() {
     // Animate sections in sequence
     const sections = [
         '.results-summary',
-        '.original-section',
-        '.results-grid-section',
+        '.results-carousel-section',
         '.results-actions'
     ];
     
@@ -141,7 +424,7 @@ function animatePageElements() {
     });
 }
 
-// Toast notification system (matching main.js)
+// Toast notification system
 function createToastContainer() {
     const toastContainer = document.createElement('div');
     toastContainer.id = 'toastContainer';
@@ -323,8 +606,12 @@ function downloadResult(resultFilename, itemName) {
 
 function downloadAllResults() {
     const resultCards = document.querySelectorAll('.result-card:not(.error-card)');
+    const carouselSlides = document.querySelectorAll('.carousel-result-slide:not(.original-slide):not(.error-slide)');
     
-    if (resultCards.length === 0) {
+    // Use carousel slides if in carousel view, otherwise use grid cards
+    const items = carouselSlides.length > 0 ? carouselSlides : resultCards;
+    
+    if (items.length === 0) {
         showToast('No results to download', 'warning');
         return;
     }
@@ -332,20 +619,27 @@ function downloadAllResults() {
     showLoading('Preparing downloads...');
     
     let downloadCount = 0;
-    const totalCount = resultCards.length;
+    const totalCount = items.length;
     
     // Create progress toast
     showToast(`Downloading ${totalCount} results...`, 'info');
     
-    resultCards.forEach((card, index) => {
-        const img = card.querySelector('.result-image');
-        const itemName = card.querySelector('.result-info h4').textContent.replace('Item ', '');
-        const src = img.src;
-        const filename = src.split('/').pop();
+    items.forEach((item, index) => {
+        let img, itemName, filename;
+        
+        if (item.classList.contains('carousel-result-slide')) {
+            img = item.querySelector('.result-image');
+            itemName = img.getAttribute('data-item-name');
+            filename = img.getAttribute('data-filename');
+        } else {
+            img = item.querySelector('.result-image');
+            itemName = item.querySelector('.result-info h4').textContent.replace('Item ', '');
+            filename = img.src.split('/').pop();
+        }
         
         setTimeout(() => {
             const link = document.createElement('a');
-            link.href = src;
+            link.href = `/result/${filename}`;
             link.download = `virtual_tryon_item_${itemName}.jpg`;
             
             document.body.appendChild(link);
@@ -364,11 +658,11 @@ function downloadAllResults() {
 
 // Image zoom functionality
 function setupImageZoom() {
-    const originalImage = document.querySelector('.original-image');
-    if (originalImage) {
-        originalImage.classList.add('zoom-cursor');
-        originalImage.addEventListener('click', () => toggleImageZoom(originalImage));
-    }
+    const originalImages = document.querySelectorAll('.original-image');
+    originalImages.forEach(img => {
+        img.classList.add('zoom-cursor');
+        img.addEventListener('click', () => toggleImageZoom(img));
+    });
 }
 
 function toggleImageZoom(img) {
@@ -427,6 +721,8 @@ function setupTooltips() {
     const tooltipTargets = [
         { selector: '.btn-view', text: 'View full size (V)' },
         { selector: '.btn-download', text: 'Download image (D)' },
+        { selector: '.btn-fullscreen', text: 'View fullscreen' },
+        { selector: '.btn-slide-action.btn-download', text: 'Download this result' },
         { selector: '.original-image', text: 'Click to zoom' }
     ];
     
@@ -475,10 +771,6 @@ function handleKeyboardEvents(e) {
                 if (currentResultFilename && currentItemName) {
                     downloadResult(currentResultFilename, currentItemName);
                 }
-                break;
-            case 'v':
-            case 'V':
-                // View key - already in modal
                 break;
         }
     } else {
@@ -556,38 +848,6 @@ document.addEventListener('click', function(e) {
     }
 });
 
-// Touch/swipe gestures for mobile
-let touchStartX = 0;
-let touchEndX = 0;
-
-document.addEventListener('touchstart', function(e) {
-    const modal = document.getElementById('fullSizeModal');
-    if (modal.style.display === 'flex') {
-        touchStartX = e.changedTouches[0].screenX;
-    }
-}, { passive: true });
-
-document.addEventListener('touchend', function(e) {
-    const modal = document.getElementById('fullSizeModal');
-    if (modal.style.display === 'flex') {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }
-}, { passive: true });
-
-function handleSwipe() {
-    const swipeThreshold = 50;
-    const swipeDistance = touchEndX - touchStartX;
-    
-    if (Math.abs(swipeDistance) > swipeThreshold) {
-        if (swipeDistance > 0) {
-            navigateModal('prev');
-        } else {
-            navigateModal('next');
-        }
-    }
-}
-
 // Add fadeIn/fadeOut animations if not already defined
 const animationStyle = document.createElement('style');
 animationStyle.textContent = `
@@ -602,3 +862,15 @@ animationStyle.textContent = `
     }
 `;
 document.head.appendChild(animationStyle);
+
+// Handle window resize for carousel
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        const carouselSection = document.querySelector('.results-carousel-section');
+        if (carouselSection && carouselSection.style.display !== 'none') {
+            updateCarousel();
+        }
+    }, 250);
+});

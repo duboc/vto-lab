@@ -837,6 +837,10 @@ body::before {
 /* ==========================================================================
    10. Results Page Styles
    ========================================================================== */
+.results-header {
+    margin-bottom: 24px;
+}
+
 .results-summary {
     background: white;
     border-radius: var(--radius-xl);
@@ -1314,4 +1318,306 @@ body::before {
     .results-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     }
+}
+
+/* ==========================================================================
+   15. Results Carousel Styles
+   ========================================================================== */
+.results-carousel-section {
+    margin-bottom: 32px;
+}
+
+.results-carousel-container {
+    position: relative;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--glass-shadow);
+    padding: 0;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+/* Results Carousel Track */
+.results-carousel-track-container {
+    overflow: hidden;
+    padding: 40px 20px;
+    position: relative;
+}
+
+.results-carousel-track {
+    display: flex;
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    gap: 32px;
+    padding: 0 40px;
+}
+
+/* Result Slides */
+.carousel-result-slide {
+    flex: 0 0 100%;
+    background: white;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+    transition: all var(--transition-smooth);
+    cursor: pointer;
+    position: relative;
+}
+
+.carousel-result-slide.original-slide {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+}
+
+.carousel-result-slide.error-slide {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+}
+
+.slide-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.slide-label {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: var(--gradient-primary);
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    font-weight: 600;
+    z-index: 2;
+    box-shadow: var(--shadow-md);
+}
+
+.slide-label.error {
+    background: var(--gradient-secondary);
+}
+
+.slide-image-container {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--gray-50);
+}
+
+.slide-image {
+    max-width: 100%;
+    max-height: 500px;
+    height: auto;
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+    transition: transform var(--transition-smooth);
+}
+
+.carousel-result-slide:hover .slide-image {
+    transform: scale(1.02);
+}
+
+.slide-actions {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    display: flex;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+.carousel-result-slide:hover .slide-actions {
+    opacity: 1;
+}
+
+.btn-slide-action {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: none;
+    padding: 12px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-slide-action:hover {
+    background: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-slide-action svg {
+    width: 20px;
+    height: 20px;
+    color: var(--gray-700);
+}
+
+.btn-fullscreen:hover svg {
+    color: var(--primary);
+}
+
+.btn-download:hover svg {
+    color: var(--success);
+}
+
+.slide-info {
+    text-align: center;
+}
+
+.slide-info h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--gray-900);
+}
+
+.slide-status {
+    font-size: 1rem;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.slide-status.success {
+    color: var(--success);
+}
+
+.slide-status.error {
+    color: var(--danger);
+}
+
+/* View Toggle */
+.view-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.btn-view-toggle {
+    background: rgba(255, 255, 255, 0.8);
+    border: 2px solid var(--gray-200);
+    padding: 10px 20px;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--gray-600);
+}
+
+.btn-view-toggle:hover {
+    background: white;
+    border-color: var(--gray-300);
+    color: var(--gray-700);
+}
+
+.btn-view-toggle.active {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: transparent;
+}
+
+.btn-view-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Mobile Carousel Adjustments */
+@media (max-width: 768px) {
+    .results-carousel-track-container {
+        padding: 20px 10px;
+    }
+    
+    .results-carousel-track {
+        gap: 16px;
+        padding: 0 20px;
+    }
+    
+    .slide-content {
+        padding: 16px;
+    }
+    
+    .slide-image {
+        max-height: 400px;
+    }
+    
+    .slide-actions {
+        opacity: 1;
+        bottom: 12px;
+        right: 12px;
+    }
+    
+    .btn-slide-action {
+        padding: 10px;
+    }
+    
+    .carousel-nav {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .carousel-nav svg {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Touch-friendly mobile styles */
+@media (pointer: coarse) {
+    .slide-actions {
+        opacity: 1;
+    }
+    
+    .carousel-result-slide {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+    }
+}
+
+/* Carousel indicator animations */
+@keyframes indicatorPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+}
+
+.carousel-indicator.transitioning {
+    animation: indicatorPulse 0.5s ease-out;
+}
+
+/* Smooth transitions for carousel */
+.results-carousel-track.transitioning {
+    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.results-carousel-track.dragging {
+    transition: none;
+}
+
+/* Error slide styles */
+.error-container {
+    position: relative;
+}
+
+.error-container .error-overlay {
+    background: rgba(239, 68, 68, 0.95);
+    backdrop-filter: blur(4px);
 }
