@@ -2,6 +2,182 @@
    Mobile-First Enhancements
    ========================================================================== */
 
+/* Swiper CSS Overrides and Mobile Optimizations */
+.swiper {
+    width: 100%;
+    height: 100%;
+    overflow: hidden !important;
+    position: relative;
+}
+
+.swiper-wrapper {
+    align-items: stretch;
+    display: flex;
+}
+
+.swiper-slide {
+    width: auto !important;
+    flex-shrink: 0;
+    max-width: calc(100% - 32px);
+}
+
+/* Container boundary enforcement */
+.clothing-carousel {
+    max-width: 100%;
+    overflow: hidden !important;
+}
+
+.clothing-gallery {
+    overflow-x: hidden;
+}
+
+/* Minimalist Swiper navigation buttons - Clean and simple */
+.swiper-button-next,
+.swiper-button-prev {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 15;
+    background: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    margin-top: 0;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.swiper-button-next:hover,
+.swiper-button-prev:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: translateY(-50%) scale(1.05);
+}
+
+.swiper-button-next:after,
+.swiper-button-prev:after {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.swiper-button-next.swiper-button-disabled,
+.swiper-button-prev.swiper-button-disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.swiper-button-prev {
+    left: 16px;
+}
+
+.swiper-button-next {
+    right: 16px;
+}
+
+/* Mobile navigation adjustments - Positioned outside carousel */
+@media (max-width: 768px) {
+    .swiper-button-next,
+    .swiper-button-prev {
+        width: 36px;
+        height: 36px;
+        font-size: 1rem;
+        top: 100%;
+        margin-top: 16px;
+        position: absolute;
+        background: rgba(0, 0, 0, 0.6);
+    }
+    
+    .swiper-button-next:after,
+    .swiper-button-prev:after {
+        font-size: 1rem;
+    }
+    
+    .swiper-button-prev {
+        left: 50%;
+        transform: translateX(-50px);
+    }
+    
+    .swiper-button-next {
+        right: auto;
+        left: 50%;
+        transform: translateX(14px);
+    }
+}
+
+/* Swiper pagination */
+.swiper-pagination {
+    bottom: -40px !important;
+    text-align: center;
+}
+
+.swiper-pagination-bullet {
+    width: 8px;
+    height: 8px;
+    background: var(--gray-300);
+    border-radius: 50%;
+    margin: 0 4px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    opacity: 1;
+}
+
+.swiper-pagination-bullet-active {
+    background: var(--primary);
+    transform: scale(1.25);
+}
+
+/* Enhanced Swiper scrollbar styling */
+.swiper-scrollbar {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-full);
+    bottom: 10px !important;
+    height: 6px !important;
+    margin: 0 60px;
+}
+
+.swiper-scrollbar-drag {
+    background: var(--gradient-primary);
+    border-radius: var(--radius-full);
+    cursor: grab;
+    transition: all var(--transition-base);
+}
+
+.swiper-scrollbar-drag:active {
+    cursor: grabbing;
+    transform: scaleY(1.5);
+}
+
+@media (max-width: 768px) {
+    .swiper-scrollbar {
+        margin: 0 50px;
+        height: 8px !important;
+        bottom: 8px !important;
+    }
+}
+
+/* Touch action optimizations for Swiper */
+.clothing-carousel,
+.swiper {
+    touch-action: pan-x;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* Allow touch actions on interactive elements */
+.clothing-item .btn-try-on {
+    touch-action: manipulation;
+    -webkit-touch-callout: default;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    pointer-events: auto;
+}
+
 /* Prevent accidental touch actions */
 .clothing-carousel {
     -webkit-tap-highlight-color: transparent;

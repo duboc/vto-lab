@@ -112,11 +112,19 @@
         const clothingItems = document.querySelectorAll('.clothing-item');
         
         clothingItems.forEach(item => {
-            // Add long press to preview
+            // Add long press to preview - only if NOT in carousel track
             let pressTimer;
+            let isLongPress = false;
             
             item.addEventListener('touchstart', (e) => {
+                // Don't add long press if item is in carousel (conflicts with swipe)
+                if (item.closest('.carousel-track')) {
+                    return;
+                }
+                
+                isLongPress = false;
                 pressTimer = setTimeout(() => {
+                    isLongPress = true;
                     // Haptic feedback
                     if ('vibrate' in navigator) {
                         navigator.vibrate(50);
@@ -124,15 +132,28 @@
                     
                     // Show preview
                     showClothingPreview(item);
-                }, 500);
+                }, 800); // Increased delay to avoid conflicts
             });
             
             item.addEventListener('touchend', () => {
                 clearTimeout(pressTimer);
+                // Prevent click if it was a long press
+                if (isLongPress) {
+                    setTimeout(() => { isLongPress = false; }, 100);
+                }
             });
             
             item.addEventListener('touchmove', () => {
                 clearTimeout(pressTimer);
+                isLongPress = false;
+            });
+            
+            // Override click handler to check for long press
+            item.addEventListener('click', (e) => {
+                if (isLongPress) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             });
         });
     }

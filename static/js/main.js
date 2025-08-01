@@ -8,18 +8,8 @@ let isDragging = false;
 let retryCount = 0;
 let maxRetries = 3;
 
-// Carousel variables
-let currentSlideIndex = 0;
-let totalSlides = 0;
-let slidesPerView = 1;
-let slideWidth = 0;
-let carouselTrack = null;
-let carouselPrev = null;
-let carouselNext = null;
-let carouselIndicators = null;
-let touchStartX = 0;
-let touchEndX = 0;
-let isCarouselDragging = false;
+// Swiper instance
+let clothingSwiper = null;
 
 // DOM Elements
 const uploadComponent = document.getElementById('uploadComponent');
@@ -245,8 +235,16 @@ function handleImageSelect(e) {
 }
 
 async function handleImageFile(file) {
-    if (!file.type.startsWith('image/')) {
-        showToast('Please select a valid image file', 'error');
+    // Enhanced file type validation for iOS compatibility
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    const isValidImage = validImageTypes.includes(file.type.toLowerCase()) || 
+                        file.type.startsWith('image/') ||
+                        /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+    
+    if (!isValidImage) {
+        showToast('Please select a valid image file (JPG, PNG, GIF, WebP)', 'error');
+        // Clear the input to allow re-selection
+        imageInput.value = '';
         return;
     }
     
@@ -346,10 +344,29 @@ function capturePhoto() {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     
-    canvas.width = cameraPreview.videoWidth;
-    canvas.height = cameraPreview.videoHeight;
+    // Get video dimensions
+    const videoWidth = cameraPreview.videoWidth;
+    const videoHeight = cameraPreview.videoHeight;
     
-    context.drawImage(cameraPreview, 0, 0);
+    // Set canvas dimensions to match video, but handle rotation
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
+    
+    // Save the current context state
+    context.save();
+    
+    // Handle mobile camera rotation - flip horizontally for front camera
+    if (window.orientation !== undefined) {
+        // Mobile device detected
+        context.scale(-1, 1); // Flip horizontally for front camera
+        context.translate(-canvas.width, 0);
+    }
+    
+    // Draw the image
+    context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
+    
+    // Restore context
+    context.restore();
     
     canvas.toBlob(async (blob) => {
         // Convert blob to File object with proper type
@@ -360,7 +377,7 @@ function capturePhoto() {
         
         await handleImageFile(file);
         stopCamera();
-    }, 'image/jpeg', 0.8);
+    }, 'image/jpeg', 0.9);
 }
 
 function stopCamera(silent = false) {
@@ -394,99 +411,119 @@ function changeImage() {
     imageInput.value = '';
 }
 
-// Carousel functionality
+// Swiper Carousel functionality
 function initializeCarousel() {
-    carouselTrack = document.getElementById('carouselTrack');
-    carouselPrev = document.getElementById('carouselPrev');
-    carouselNext = document.getElementById('carouselNext');
-    carouselIndicators = document.getElementById('carouselIndicators');
-    
-    if (!carouselTrack) return; // No carousel on this page
-    
-    const slides = carouselTrack.querySelectorAll('.carousel-slide');
-    totalSlides = slides.length;
-    
-    if (totalSlides === 0) return;
-    
-    // Calculate slides per view based on screen size
-    updateSlidesPerView();
-    
-    // Generate indicators
-    generateCarouselIndicators();
-    
-    // Add event listeners
-    setupCarouselEventListeners();
-    
-    // Initialize carousel position
-    updateCarousel();
-    
-    // Handle resize
-    window.addEventListener('resize', throttle(() => {
-        updateSlidesPerView();
-        updateCarousel();
-    }, 250));
-}
-
-function updateSlidesPerView() {
-    const containerWidth = carouselTrack.parentElement.offsetWidth;
-    const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 280;
-    const gap = 16; // Gap between slides
-    
-    slidesPerView = Math.floor((containerWidth + gap) / (slideWidth + gap));
-    slidesPerView = Math.max(1, Math.min(slidesPerView, totalSlides));
-}
-
-function generateCarouselIndicators() {
-    if (!carouselIndicators) return;
-    
-    carouselIndicators.innerHTML = '';
-    const totalIndicators = Math.max(1, totalSlides - slidesPerView + 1);
-    
-    for (let i = 0; i < totalIndicators; i++) {
-        const indicator = document.createElement('button');
-        indicator.className = 'carousel-indicator';
-        indicator.setAttribute('aria-label', `Go to slide ${i + 1}`);
-        indicator.addEventListener('click', () => goToSlide(i));
-        carouselIndicators.appendChild(indicator);
-    }
-}
-
-function setupCarouselEventListeners() {
-    // Navigation buttons
-    if (carouselPrev) {
-        carouselPrev.addEventListener('click', () => goToPrevSlide());
+    // Wait for Swiper to be available
+    if (typeof Swiper === 'undefined') {
+        setTimeout(initializeCarousel, 100);
+        return;
     }
     
-    if (carouselNext) {
-        carouselNext.addEventListener('click', () => goToNextSlide());
-    }
+    const swiperContainer = document.getElementById('clothingSwiper');
+    if (!swiperContainer) return; // No carousel on this page
     
-    // Touch events for mobile swiping
-    if (carouselTrack) {
-        carouselTrack.addEventListener('touchstart', handleTouchStart, { passive: false });
-        carouselTrack.addEventListener('touchmove', handleTouchMove, { passive: false });
-        carouselTrack.addEventListener('touchend', handleTouchEnd);
+    // Initialize Swiper with improved settings for better visibility and UX
+    clothingSwiper = new Swiper('#clothingSwiper', {
+        // Show at least 3 items on all devices
+        slidesPerView: 3.2,
+        spaceBetween: 20,
+        centeredSlides: false,
         
-        // Mouse events for desktop dragging
-        carouselTrack.addEventListener('mousedown', handleMouseDown);
-        carouselTrack.addEventListener('mousemove', handleMouseMove);
-        carouselTrack.addEventListener('mouseup', handleMouseUp);
-        carouselTrack.addEventListener('mouseleave', handleMouseUp);
-    }
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-        if (e.target.closest('.clothing-carousel')) {
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                goToPrevSlide();
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                goToNextSlide();
+        // Smooth scrolling without free mode for better control
+        freeMode: false,
+        
+        // Navigation arrows - highly visible
+        navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+        },
+        
+        // Pagination dots
+        pagination: {
+            el: '.swiper-pagination',
+            clickable: true,
+            dynamicBullets: true,
+        },
+        
+        // Touch settings for smooth mobile experience
+        touchEventsTarget: 'container',
+        simulateTouch: true,
+        touchRatio: 1,
+        touchAngle: 45,
+        grabCursor: true,
+        
+        // Prevent clicks during swipe
+        preventClicks: false,
+        preventClicksPropagation: false,
+        slideToClickedSlide: false,
+        
+        // Smooth resistance at boundaries
+        resistance: true,
+        resistanceRatio: 0.3,
+        
+        // Smooth transitions
+        speed: 400,
+        effect: 'slide',
+        
+        // Enhanced breakpoints ensuring 3+ items visible
+        breakpoints: {
+            320: {
+                slidesPerView: 3,
+                spaceBetween: 12,
+            },
+            480: {
+                slidesPerView: 3.2,
+                spaceBetween: 16,
+            },
+            640: {
+                slidesPerView: 3.5,
+                spaceBetween: 18,
+            },
+            768: {
+                slidesPerView: 4,
+                spaceBetween: 20,
+            },
+            1024: {
+                slidesPerView: 4.5,
+                spaceBetween: 24,
+            },
+            1200: {
+                slidesPerView: 5,
+                spaceBetween: 28,
+            }
+        },
+        
+        // Loop for continuous scrolling
+        loop: false,
+        
+        // Allow clicks on slides and their children
+        allowTouchMove: true,
+        allowSlideNext: true,
+        allowSlidePrev: true,
+        
+        // Smooth scrollbar
+        scrollbar: {
+            el: '.swiper-scrollbar',
+            draggable: true,
+            hide: false,
+        },
+        
+        // Events
+        on: {
+            init: function() {
+                console.log('Enhanced Swiper initialized');
+                // Ensure navigation buttons are visible
+                this.navigation.update();
+            },
+            slideChange: function() {
+                // Update navigation button states
+                this.navigation.update();
             }
         }
     });
 }
+
+// Legacy functions removed - now handled by Swiper.js
 
 // Image preview functionality
 function setupImagePreview() {
@@ -920,83 +957,18 @@ function addAccessibilityFeatures() {
 }
 
 function initializeNetworkMonitoring() {
-    // Monitor connection status
-    let isOnline = navigator.onLine;
-    let connectionQuality = 'good';
+    // Simplified network monitoring - no UI indicators
+    // Only handle actual offline/online events without showing notifications
     
-    // Create connection indicator
-    const connectionIndicator = document.createElement('div');
-    connectionIndicator.id = 'connectionIndicator';
-    connectionIndicator.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 20px;
-        background: var(--success);
-        color: white;
-        padding: 8px 16px;
-        border-radius: var(--radius-full);
-        font-size: 0.875rem;
-        font-weight: 600;
-        z-index: 1000;
-        display: none;
-        align-items: center;
-        gap: 8px;
-        transition: all var(--transition-base);
-    `;
-    document.body.appendChild(connectionIndicator);
-    
-    function updateConnectionStatus(online, quality = 'good') {
-        isOnline = online;
-        connectionQuality = quality;
-        
-        if (!online) {
-            connectionIndicator.style.background = 'var(--danger)';
-            connectionIndicator.innerHTML = '🔴 Offline - Check your connection';
-            connectionIndicator.style.display = 'flex';
-        } else if (quality === 'poor') {
-            connectionIndicator.style.background = 'var(--warning)';
-            connectionIndicator.innerHTML = '🟡 Slow connection detected';
-            connectionIndicator.style.display = 'flex';
-        } else {
-            connectionIndicator.style.display = 'none';
-        }
-    }
-    
-    // Listen for connection changes
     window.addEventListener('online', () => {
-        updateConnectionStatus(true);
-        showToast('Connection restored!', 'success');
+        // Just log the event, no UI notifications
+        console.log('Connection restored');
     });
     
     window.addEventListener('offline', () => {
-        updateConnectionStatus(false);
+        // Show only critical offline notifications
         showToast('Connection lost. Please check your internet.', 'error');
     });
-    
-    // Monitor connection quality using fetch timing
-    let lastFetchTime = Date.now();
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-        const startTime = Date.now();
-        try {
-            const response = await originalFetch(...args);
-            const duration = Date.now() - startTime;
-            
-            // Update connection quality based on response time
-            if (duration > 5000) {
-                updateConnectionStatus(true, 'poor');
-            } else if (connectionQuality === 'poor' && duration < 2000) {
-                updateConnectionStatus(true, 'good');
-            }
-            
-            return response;
-        } catch (error) {
-            if (!isOnline) {
-                updateConnectionStatus(false);
-            }
-            throw error;
-        }
-    };
 }
 
 function enhanceImageLoading() {
@@ -1176,201 +1148,7 @@ function initializePerformanceMonitoring() {
 // Initialize performance monitoring
 initializePerformanceMonitoring();
 
-// Carousel navigation functions
-function goToSlide(index) {
-    const maxIndex = Math.max(0, totalSlides - slidesPerView);
-    currentSlideIndex = Math.max(0, Math.min(index, maxIndex));
-    updateCarousel();
-}
-
-function goToNextSlide() {
-    const maxIndex = Math.max(0, totalSlides - slidesPerView);
-    if (currentSlideIndex < maxIndex) {
-        currentSlideIndex++;
-        updateCarousel();
-    }
-}
-
-function goToPrevSlide() {
-    if (currentSlideIndex > 0) {
-        currentSlideIndex--;
-        updateCarousel();
-    }
-}
-
-function updateCarousel() {
-    if (!carouselTrack) return;
-    
-    const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 280;
-    const gap = 16;
-    const translateX = -currentSlideIndex * (slideWidth + gap);
-    
-    carouselTrack.style.transform = `translateX(${translateX}px)`;
-    
-    // Update navigation buttons
-    updateNavigationButtons();
-    
-    // Update indicators
-    updateIndicators();
-}
-
-function updateNavigationButtons() {
-    if (!carouselPrev || !carouselNext) return;
-    
-    const maxIndex = Math.max(0, totalSlides - slidesPerView);
-    
-    carouselPrev.disabled = currentSlideIndex === 0;
-    carouselNext.disabled = currentSlideIndex >= maxIndex;
-    
-    // Add visual feedback
-    carouselPrev.style.opacity = currentSlideIndex === 0 ? '0.4' : '1';
-    carouselNext.style.opacity = currentSlideIndex >= maxIndex ? '0.4' : '1';
-}
-
-function updateIndicators() {
-    if (!carouselIndicators) return;
-    
-    const indicators = carouselIndicators.querySelectorAll('.carousel-indicator');
-    indicators.forEach((indicator, index) => {
-        indicator.classList.toggle('active', index === currentSlideIndex);
-    });
-}
-
-// Touch and mouse event handlers
-let touchStartTime = 0;
-let touchStartY = 0;
-let hasMoved = false;
-
-function handleTouchStart(e) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    touchStartTime = Date.now();
-    hasMoved = false;
-    isCarouselDragging = true;
-    carouselTrack.style.transition = 'none';
-}
-
-function handleTouchMove(e) {
-    if (!isCarouselDragging) return;
-    
-    touchEndX = e.touches[0].clientX;
-    const touchEndY = e.touches[0].clientY;
-    
-    const diffX = touchStartX - touchEndX;
-    const diffY = touchStartY - touchEndY;
-    
-    // Check if this is a horizontal swipe (not vertical scroll)
-    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 10) {
-        e.preventDefault(); // Prevent scrolling only for horizontal swipes
-        hasMoved = true;
-        
-        // Add resistance at boundaries
-        const maxIndex = Math.max(0, totalSlides - slidesPerView);
-        const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 280;
-        const gap = 16;
-        
-        let resistance = 1;
-        if ((currentSlideIndex === 0 && diffX < 0) || 
-            (currentSlideIndex >= maxIndex && diffX > 0)) {
-            resistance = 0.3; // Reduce movement at boundaries
-        }
-        
-        const baseTranslateX = -currentSlideIndex * (slideWidth + gap);
-        const translateX = baseTranslateX - (diffX * resistance);
-        
-        carouselTrack.style.transform = `translateX(${translateX}px)`;
-    }
-}
-
-function handleTouchEnd(e) {
-    if (!isCarouselDragging) return;
-    
-    isCarouselDragging = false;
-    carouselTrack.style.transition = '';
-    
-    const touchDuration = Date.now() - touchStartTime;
-    const diffX = touchStartX - touchEndX;
-    const threshold = 50; // Minimum swipe distance
-    const tapThreshold = 200; // Maximum time for a tap (ms)
-    
-    // If it's a quick tap and hasn't moved much, treat it as a click
-    if (touchDuration < tapThreshold && Math.abs(diffX) < 10 && !hasMoved) {
-        // Let the click event handle it
-        updateCarousel();
-    } else if (Math.abs(diffX) > threshold) {
-        // It's a swipe
-        if (diffX > 0) {
-            goToNextSlide();
-        } else {
-            goToPrevSlide();
-        }
-    } else {
-        // Snap back to current position
-        updateCarousel();
-    }
-    
-    touchStartX = 0;
-    touchEndX = 0;
-    touchStartY = 0;
-    hasMoved = false;
-}
-
-// Mouse event handlers (for desktop dragging)
-function handleMouseDown(e) {
-    e.preventDefault();
-    touchStartX = e.clientX;
-    isCarouselDragging = true;
-    carouselTrack.style.transition = 'none';
-    carouselTrack.style.cursor = 'grabbing';
-}
-
-function handleMouseMove(e) {
-    if (!isCarouselDragging) return;
-    
-    e.preventDefault();
-    touchEndX = e.clientX;
-    const diff = touchStartX - touchEndX;
-    
-    // Add resistance at boundaries
-    const maxIndex = Math.max(0, totalSlides - slidesPerView);
-    const slideWidth = carouselTrack.querySelector('.carousel-slide')?.offsetWidth || 280;
-    const gap = 16;
-    
-    let resistance = 1;
-    if ((currentSlideIndex === 0 && diff < 0) || 
-        (currentSlideIndex >= maxIndex && diff > 0)) {
-        resistance = 0.3;
-    }
-    
-    const baseTranslateX = -currentSlideIndex * (slideWidth + gap);
-    const translateX = baseTranslateX - (diff * resistance);
-    
-    carouselTrack.style.transform = `translateX(${translateX}px)`;
-}
-
-function handleMouseUp(e) {
-    if (!isCarouselDragging) return;
-    
-    isCarouselDragging = false;
-    carouselTrack.style.transition = '';
-    carouselTrack.style.cursor = '';
-    
-    const diff = touchStartX - touchEndX;
-    const threshold = 50;
-    
-    if (Math.abs(diff) > threshold) {
-        if (diff > 0) {
-            goToNextSlide();
-        } else {
-            goToPrevSlide();
-        }
-    } else {
-        updateCarousel();
-    }
-    
-    touchStartX = 0;
-    touchEndX = 0;
-}
+// Legacy carousel functions removed - Swiper.js handles all navigation and touch events
 
 // Utility function for throttling
 function throttle(func, limit) {
