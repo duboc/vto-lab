@@ -36,17 +36,26 @@ os.makedirs(RESULTS_FOLDER, exist_ok=True)
 vto_client = VirtualTryOnClient(PROJECT_ID, LOCATION)
 batch_processor = BatchProcessor(vto_client)
 
+def natural_sort_key(filename):
+    """Natural sort key for filenames with numbers"""
+    import re
+    parts = re.split(r'(\d+)', filename)
+    return [int(part) if part.isdigit() else part.lower() for part in parts]
+
 def get_clothing_items():
     """Get list of clothing items from the clothes folder"""
     clothing_items = []
     if os.path.exists(CLOTHES_FOLDER):
-        for filename in sorted(os.listdir(CLOTHES_FOLDER)):
-            if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                clothing_items.append({
-                    'filename': filename,
-                    'path': os.path.join(CLOTHES_FOLDER, filename),
-                    'name': filename.split('.')[0]
-                })
+        # Use natural sorting to handle numbered files correctly (1, 2, 10 instead of 1, 10, 2)
+        filenames = [f for f in os.listdir(CLOTHES_FOLDER) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+        filenames.sort(key=natural_sort_key)
+        
+        for filename in filenames:
+            clothing_items.append({
+                'filename': filename,
+                'path': os.path.join(CLOTHES_FOLDER, filename),
+                'name': filename.split('.')[0]
+            })
     return clothing_items
 
 def allowed_file(filename):

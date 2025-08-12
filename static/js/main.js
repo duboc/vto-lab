@@ -13,16 +13,23 @@ let clothingSwiper = null;
 
 // DOM Elements
 const uploadComponent = document.getElementById('uploadComponent');
-const uploadTabBtn = document.getElementById('uploadTabBtn');
-const cameraTabBtn = document.getElementById('cameraTabBtn');
-const uploadContent = document.getElementById('uploadContent');
-const cameraContent = document.getElementById('cameraContent');
 const uploadArea = document.getElementById('uploadArea');
-const imageInput = document.getElementById('imageInput');
-const cameraSection = document.getElementById('cameraSection');
+const cameraArea = document.getElementById('cameraArea');
+const fileInput = document.getElementById('fileInput');
+const browseBtn = document.getElementById('browseBtn');
 const cameraPreview = document.getElementById('cameraPreview');
+const captureCanvas = document.getElementById('captureCanvas');
 const captureBtn = document.getElementById('captureBtn');
-const closeCameraBtn = document.getElementById('closeCameraBtn');
+const stopCameraBtn = document.getElementById('stopCameraBtn');
+const switchCameraBtn = document.getElementById('switchCameraBtn');
+const retryCameraBtn = document.getElementById('retryCameraBtn');
+const useCapturedBtn = document.getElementById('useCapturedBtn');
+const retakeBtn = document.getElementById('retakeBtn');
+const analyzeBtn = document.getElementById('analyzeBtn');
+
+// Upload method tabs
+const uploadFileTab = document.getElementById('uploadFile');
+const takePhotoTab = document.getElementById('takePhoto');
 const userImagePreview = document.getElementById('userImagePreview');
 const userImage = document.getElementById('userImage');
 const changeImageBtn = document.getElementById('changeImageBtn');
@@ -55,43 +62,104 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function initializeEventListeners() {
-    // Tab events
-    uploadTabBtn.addEventListener('click', () => switchTab('upload'));
-    cameraTabBtn.addEventListener('click', () => switchTab('camera'));
-
-    // Upload area events
-    uploadArea.addEventListener('click', () => imageInput.click());
-    uploadArea.addEventListener('dragover', handleDragOver);
-    uploadArea.addEventListener('dragleave', handleDragLeave);
-    uploadArea.addEventListener('drop', handleDrop);
+    // Upload method switching
+    if (uploadFileTab) {
+        uploadFileTab.addEventListener('change', function() {
+            if (this.checked) {
+                showUploadArea();
+            }
+        });
+    }
     
-    // Image input change
-    imageInput.addEventListener('change', handleImageSelect);
+    if (takePhotoTab) {
+        takePhotoTab.addEventListener('change', function() {
+            if (this.checked) {
+                showCameraArea();
+            }
+        });
+    }
+
+    // File upload handling
+    if (browseBtn && fileInput) {
+        browseBtn.addEventListener('click', () => fileInput.click());
+    }
+    
+    if (uploadArea && fileInput) {
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+    }
+    
+    // File input change
+    if (fileInput) {
+        fileInput.addEventListener('change', handleImageSelect);
+    }
     
     // Camera events
-    captureBtn.addEventListener('click', capturePhoto);
-    closeCameraBtn.addEventListener('click', stopCamera);
+    if (captureBtn) {
+        captureBtn.addEventListener('click', capturePhoto);
+    }
+    if (stopCameraBtn) {
+        stopCameraBtn.addEventListener('click', stopCamera);
+    }
+    if (switchCameraBtn) {
+        switchCameraBtn.addEventListener('click', switchCamera);
+    }
+    if (retryCameraBtn) {
+        retryCameraBtn.addEventListener('click', startCamera);
+    }
+    if (useCapturedBtn) {
+        useCapturedBtn.addEventListener('click', useCapturedPhoto);
+    }
+    if (retakeBtn) {
+        retakeBtn.addEventListener('click', retakePhoto);
+    }
+    
+    // Analysis button
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener('click', startTryOnProcess);
+    }
     
     // User image events
-    changeImageBtn.addEventListener('click', changeImage);
+    if (changeImageBtn) {
+        changeImageBtn.addEventListener('click', changeImage);
+    }
     
     // Action buttons
-    tryAllBtn.addEventListener('click', startTryAllClothes);
-    trySelectedBtn.addEventListener('click', startTrySelectedClothing);
+    if (tryAllBtn) {
+        tryAllBtn.addEventListener('click', startTryAllClothes);
+    }
+    if (trySelectedBtn) {
+        trySelectedBtn.addEventListener('click', startTrySelectedClothing);
+    }
     
     // Progress controls
-    cancelBtn.addEventListener('click', cancelProcessing);
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', cancelProcessing);
+    }
     
     // Result actions
-    downloadBtn.addEventListener('click', downloadResult);
-    tryAnotherBtn.addEventListener('click', tryAnotherItem);
-    startOverBtn.addEventListener('click', startOver);
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadResult);
+    }
+    if (tryAnotherBtn) {
+        tryAnotherBtn.addEventListener('click', tryAnotherItem);
+    }
+    if (startOverBtn) {
+        startOverBtn.addEventListener('click', startOver);
+    }
     
     // Clothing item selection
     setupClothingItemSelection();
     
     // Image preview
     setupImagePreview();
+    
+    // Check camera support
+    checkCameraSupport();
 }
 
 // Toast notification system
@@ -226,39 +294,61 @@ function handleDrop(e) {
     }
 }
 
-// Image selection and upload
+// Global state for upload prevention
+let isUploading = false;
+let lastUploadTimestamp = 0;
+const UPLOAD_DEBOUNCE_DELAY = 1000; // 1 second
+
+// Image selection and upload with debouncing
 function handleImageSelect(e) {
+    // Prevent multiple rapid selections
+    const now = Date.now();
+    if (now - lastUploadTimestamp < UPLOAD_DEBOUNCE_DELAY) {
+        console.log('Upload debounced - too soon after last upload');
+        return;
+    }
+    
     const file = e.target.files[0];
-    if (file) {
+    if (file && !isUploading) {
+        lastUploadTimestamp = now;
         handleImageFile(file);
     }
 }
 
 async function handleImageFile(file) {
-    // Enhanced file type validation for iOS compatibility
-    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const isValidImage = validImageTypes.includes(file.type.toLowerCase()) || 
-                        file.type.startsWith('image/') ||
-                        /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
-    
-    if (!isValidImage) {
-        showToast('Please select a valid image file (JPG, PNG, GIF, WebP)', 'error');
-        // Clear the input to allow re-selection
-        imageInput.value = '';
+    // Prevent duplicate uploads
+    if (isUploading) {
+        console.log('Upload already in progress, skipping');
         return;
     }
     
-    if (file.size > 16 * 1024 * 1024) {
-        showToast('Image size must be less than 16MB', 'error');
-        return;
-    }
-    
-    showLoading('Uploading your photo...');
-    
-    const formData = new FormData();
-    formData.append('user_image', file);
+    // Set upload flag
+    isUploading = true;
     
     try {
+        // Enhanced file type validation for iOS compatibility
+        const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const isValidImage = validImageTypes.includes(file.type.toLowerCase()) || 
+                            file.type.startsWith('image/') ||
+                            /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
+        
+        if (!isValidImage) {
+            showToast('Please select a valid image file (JPG, PNG, GIF, WebP)', 'error');
+            // Clear the input to allow re-selection
+            if (fileInput) fileInput.value = '';
+            return;
+        }
+        
+        if (file.size > 16 * 1024 * 1024) {
+            showToast('Image size must be less than 16MB', 'error');
+            return;
+        }
+        
+        showLoading('Uploading your photo...');
+        
+        const formData = new FormData();
+        formData.append('user_image', file);
+        
         const response = await fetch('/upload', {
             method: 'POST',
             body: formData
@@ -277,6 +367,11 @@ async function handleImageFile(file) {
     } catch (error) {
         hideLoading();
         showToast('Failed to upload image: ' + error.message, 'error');
+        // Clear the input on error to allow retry
+        if (fileInput) fileInput.value = '';
+    } finally {
+        // Always reset upload flag
+        isUploading = false;
     }
 }
 
@@ -297,98 +392,6 @@ function switchTab(tabName) {
     }
 }
 
-// Camera functionality
-async function startCamera() {
-    if (stream) return; // Camera is already active
-    try {
-        const constraints = {
-            video: {
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            }
-        };
-        
-        try {
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch (err) {
-            constraints.video.facingMode = 'user';
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-        }
-        
-        cameraPreview.srcObject = stream;
-    } catch (error) {
-        showToast('Could not access camera: ' + error.message, 'error');
-        switchTab('upload'); // Switch back to upload tab on error
-    }
-}
-
-function capturePhoto() {
-    // Add capture animation
-    const flash = document.createElement('div');
-    flash.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: white;
-        pointer-events: none;
-        opacity: 0;
-        animation: flash 0.3s ease-out;
-    `;
-    cameraSection.appendChild(flash);
-    
-    setTimeout(() => flash.remove(), 300);
-    
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    
-    // Get video dimensions
-    const videoWidth = cameraPreview.videoWidth;
-    const videoHeight = cameraPreview.videoHeight;
-    
-    // Set canvas dimensions to match video, but handle rotation
-    canvas.width = videoWidth;
-    canvas.height = videoHeight;
-    
-    // Save the current context state
-    context.save();
-    
-    // Handle mobile camera rotation - flip horizontally for front camera
-    if (window.orientation !== undefined) {
-        // Mobile device detected
-        context.scale(-1, 1); // Flip horizontally for front camera
-        context.translate(-canvas.width, 0);
-    }
-    
-    // Draw the image
-    context.drawImage(cameraPreview, 0, 0, canvas.width, canvas.height);
-    
-    // Restore context
-    context.restore();
-    
-    canvas.toBlob(async (blob) => {
-        // Convert blob to File object with proper type
-        const file = new File([blob], 'camera_capture.jpg', {
-            type: 'image/jpeg',
-            lastModified: Date.now()
-        });
-        
-        await handleImageFile(file);
-        stopCamera();
-    }, 'image/jpeg', 0.9);
-}
-
-function stopCamera(silent = false) {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
-    if (!silent) {
-        switchTab('upload');
-    }
-}
 
 // User image display
 function showUserImage(imageUrl) {
@@ -408,7 +411,7 @@ function changeImage() {
     resultSection.style.display = 'none';
     clearClothingSelection();
     currentSessionId = null;
-    imageInput.value = '';
+    if (fileInput) fileInput.value = '';
 }
 
 // Swiper Carousel functionality
@@ -1205,10 +1208,222 @@ function enableAutoScroll() {
 }
 */
 
+// Upload method area switching
+function showUploadArea() {
+    uploadArea.style.display = 'block';
+    cameraArea.style.display = 'none';
+    document.getElementById('capturedPhotoPreview').style.display = 'none';
+    document.getElementById('imagePreview').style.display = 'none';
+    stopCamera();
+}
+
+function showCameraArea() {
+    uploadArea.style.display = 'none';
+    cameraArea.style.display = 'block';
+    document.getElementById('capturedPhotoPreview').style.display = 'none';
+    document.getElementById('imagePreview').style.display = 'none';
+    startCamera();
+}
+
+// Camera state management
+let currentStream = null;
+let facingMode = 'user';
+let capturedImageBlob = null;
+
+async function startCamera() {
+    try {
+        document.getElementById('cameraContent').style.display = 'block';
+        document.getElementById('cameraError').style.display = 'none';
+        
+        const constraints = {
+            video: {
+                facingMode: facingMode,
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+        
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        cameraPreview.srcObject = currentStream;
+        
+        // Update button visibility based on device capabilities
+        updateCameraButtons();
+        
+    } catch (error) {
+        console.error('Camera error:', error);
+        showCameraError(getCameraErrorMessage(error));
+    }
+}
+
+async function switchCamera() {
+    // Toggle facing mode
+    facingMode = facingMode === 'user' ? 'environment' : 'user';
+    
+    // Stop current stream
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+    
+    // Start camera with new facing mode
+    await startCamera();
+}
+
+async function updateCameraButtons() {
+    // Check if device has multiple cameras
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
+        
+        // Show/hide switch camera button based on camera count
+        if (switchCameraBtn) {
+            switchCameraBtn.style.display = videoDevices.length > 1 ? 'inline-flex' : 'none';
+        }
+    } catch (error) {
+        console.error('Error enumerating devices:', error);
+    }
+}
+
+function stopCamera() {
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+        currentStream = null;
+    }
+    cameraPreview.srcObject = null;
+}
+
+function capturePhoto() {
+    if (!currentStream) return;
+    
+    // Create flash effect
+    const flash = document.createElement('div');
+    flash.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        pointer-events: none;
+        opacity: 0;
+        animation: flash 0.3s ease-out;
+        z-index: 9999;
+    `;
+    document.body.appendChild(flash);
+    setTimeout(() => document.body.removeChild(flash), 300);
+    
+    // Set canvas dimensions to match video
+    const video = cameraPreview;
+    captureCanvas.width = video.videoWidth;
+    captureCanvas.height = video.videoHeight;
+    
+    // Draw video frame to canvas
+    const ctx = captureCanvas.getContext('2d');
+    
+    // Save the current context state
+    ctx.save();
+    
+    // Handle mobile camera rotation - flip horizontally for front camera
+    if (window.orientation !== undefined && facingMode === 'user') {
+        // Mobile device with front camera - flip horizontally
+        ctx.scale(-1, 1);
+        ctx.translate(-captureCanvas.width, 0);
+    }
+    
+    ctx.drawImage(video, 0, 0);
+    
+    // Restore context
+    ctx.restore();
+    
+    // Convert to blob
+    captureCanvas.toBlob(blob => {
+        capturedImageBlob = blob;
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('capturedImg').src = e.target.result;
+            document.getElementById('capturedPhotoPreview').style.display = 'block';
+            document.getElementById('cameraContent').style.display = 'none';
+        };
+        reader.readAsDataURL(blob);
+    }, 'image/jpeg', 0.9);
+}
+
+function retakePhoto() {
+    document.getElementById('capturedPhotoPreview').style.display = 'none';
+    document.getElementById('cameraContent').style.display = 'block';
+    capturedImageBlob = null;
+}
+
+function useCapturedPhoto() {
+    if (!capturedImageBlob) return;
+    
+    // Create file from blob
+    const file = new File([capturedImageBlob], 'captured-photo.jpg', {
+        type: 'image/jpeg',
+        lastModified: Date.now()
+    });
+    
+    // Process the captured photo
+    handleImageFile(file);
+    
+    // Hide camera interface and show upload area
+    document.getElementById('capturedPhotoPreview').style.display = 'none';
+    stopCamera();
+    
+    // Switch back to upload tab
+    uploadFileTab.checked = true;
+    showUploadArea();
+}
+
+function showCameraError(message) {
+    document.getElementById('cameraContent').style.display = 'none';
+    document.getElementById('cameraError').style.display = 'block';
+    document.getElementById('cameraErrorMessage').textContent = message;
+}
+
+function getCameraErrorMessage(error) {
+    switch (error.name) {
+        case 'NotAllowedError':
+            return 'Camera access denied. Please allow camera permissions and try again.';
+        case 'NotFoundError':
+            return 'No camera found on this device.';
+        case 'NotSupportedError':
+            return 'Camera not supported on this device.';
+        case 'NotReadableError':
+            return 'Camera is being used by another application.';
+        case 'OverconstrainedError':
+            return 'Camera constraints not supported.';
+        default:
+            return 'Camera access failed. Please try again.';
+    }
+}
+
+function checkCameraSupport() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        takePhotoTab.disabled = true;
+        takePhotoTab.parentElement.style.opacity = '0.5';
+        takePhotoTab.parentElement.title = 'Camera not supported on this device';
+    }
+}
+
+function startTryOnProcess() {
+    if (!currentSessionId) {
+        showToast('Please upload your photo first', 'warning');
+        return;
+    }
+    
+    // Show clothing gallery for selection
+    document.getElementById('imagePreview').style.display = 'none';
+    actionButtons.style.display = 'flex';
+    showToast('Great! Now select a clothing item to try on.', 'info');
+}
+
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
     }
     
     if (progressInterval) {

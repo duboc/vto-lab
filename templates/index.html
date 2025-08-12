@@ -21,34 +21,111 @@
 
         <!-- Upload Component -->
         <section class="upload-component" id="uploadComponent">
-            <div class="upload-tabs">
-                <button class="tab-btn active" id="uploadTabBtn">
-                    <span class="tab-icon">⬆️</span> Upload
-                </button>
-                <button class="tab-btn" id="cameraTabBtn">
-                    <span class="tab-icon">📸</span> Camera
-                </button>
+            <div class="upload-header">
+                <h3><span class="upload-icon">📸</span> Upload Your Photo</h3>
             </div>
 
-            <!-- Upload Content -->
-            <div class="tab-content active" id="uploadContent">
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">☁️</div>
-                    <h3>Drag and drop an image here</h3>
-                    <p>or click to select a file</p>
-                    <span>Supported formats: JPG, PNG</span>
-                    <input type="file" id="imageInput" style="display: none;">
+            <!-- Upload Method Selection -->
+            <div class="upload-method-selection">
+                <div class="btn-group w-100" role="group" id="uploadMethodTabs">
+                    <input type="radio" class="btn-check" name="uploadMethod" id="uploadFile" checked>
+                    <label class="btn btn-outline-primary" for="uploadFile">
+                        <span class="tab-icon">⬆️</span> Upload Photo
+                    </label>
+                    
+                    <input type="radio" class="btn-check" name="uploadMethod" id="takePhoto">
+                    <label class="btn btn-outline-primary" for="takePhoto">
+                        <span class="tab-icon">📸</span> Take Photo
+                    </label>
                 </div>
             </div>
 
-            <!-- Camera Content -->
-            <div class="tab-content" id="cameraContent">
-                <div class="camera-section" id="cameraSection">
-                    <video id="cameraPreview" autoplay playsinline></video>
-                    <div class="camera-controls">
-                        <button class="btn btn-primary" id="captureBtn">Capture Photo</button>
-                        <button class="btn btn-secondary" id="closeCameraBtn">Close Camera</button>
+            <!-- File Upload Area -->
+            <div class="upload-area" id="uploadArea">
+                <div id="uploadContent">
+                    <div class="upload-icon">☁️</div>
+                    <h3>Drag and drop an image here</h3>
+                    <p>or click to select a file</p>
+                    <button type="button" class="btn btn-primary" id="browseBtn">
+                        <span class="btn-icon">📁</span> Choose Photo
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+                    <span class="upload-tips">Supported formats: JPG, PNG</span>
+                </div>
+                
+                <div id="uploadProgress" style="display: none;">
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressBar"></div>
+                        </div>
+                        <p>Uploading...</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- Camera Interface -->
+            <div class="camera-area" id="cameraArea" style="display: none;">
+                <div id="cameraContent">
+                    <div class="camera-preview-container">
+                        <video id="cameraPreview" autoplay playsinline muted></video>
+                        <canvas id="captureCanvas" style="display: none;"></canvas>
+                    </div>
+                    
+                    <div class="camera-controls">
+                        <button type="button" class="btn btn-primary btn-lg" id="captureBtn">
+                            <span class="btn-icon">📸</span> Capture Photo
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="switchCameraBtn">
+                            <span class="btn-icon">🔄</span> Switch Camera
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="stopCameraBtn">
+                            <span class="btn-icon">✖️</span> Stop Camera
+                        </button>
+                    </div>
+                    
+                    <div class="camera-tips">
+                        <small>
+                            <span class="btn-icon">💡</span>
+                            <strong>Tips:</strong> Use natural lighting, step back to capture full body
+                        </small>
+                    </div>
+                </div>
+                
+                <div id="cameraError" style="display: none;">
+                    <div class="error-message">
+                        <span class="btn-icon">⚠️</span>
+                        <span id="cameraErrorMessage">Camera access denied or not available</span>
+                    </div>
+                    <div class="error-actions">
+                        <button type="button" class="btn btn-outline-primary" id="retryCameraBtn">
+                            <span class="btn-icon">🔄</span> Try Again
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Captured Photo Preview -->
+            <div id="capturedPhotoPreview" style="display: none;">
+                <h4>Captured Photo:</h4>
+                <img id="capturedImg" class="preview-image" style="max-height: 300px;">
+                <div class="captured-actions">
+                    <button type="button" class="btn btn-primary" id="useCapturedBtn">
+                        <span class="btn-icon">✅</span> Use This Photo
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="retakeBtn">
+                        <span class="btn-icon">🔄</span> Retake
+                    </button>
+                </div>
+            </div>
+
+            <!-- Image Preview -->
+            <div id="imagePreview" style="display: none;">
+                <h4>Uploaded Image:</h4>
+                <img id="previewImg" class="preview-image" style="max-height: 300px;">
+                <div class="preview-actions">
+                    <button type="button" class="btn btn-primary btn-lg" id="analyzeBtn">
+                        <span class="btn-icon">🔍</span> Start Try-On
+                    </button>
                 </div>
             </div>
         </section>
