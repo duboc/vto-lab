@@ -7,7 +7,7 @@ set -e
 export $(grep -v '^#' .env | xargs)
 
 # Deploy to Google Cloud Run
-gcloud run deploy vto-lab \
+gcloud run deploy vto-bain-lab \
   --source . \
   --region us-central1 \
   --set-env-vars="PROJECT_ID=${PROJECT_ID}" \
